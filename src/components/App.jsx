@@ -1,55 +1,36 @@
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { ContactList } from './ContactList/ContactList';
 import { Filter } from './Filter/Filter';
 import { ContactForm } from './ContactForm/ContactForm';
+import toast, { Toaster } from 'react-hot-toast';
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-    name: '',
-    number: '',
+export const App = () => {
+  const [contacts, setContacts] = useState(
+    JSON.parse(localStorage.getItem('contacts')) ?? []
+  );
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
+
+  const onDelete = (id, name) => {
+    setContacts(prevContacts =>
+      prevContacts.filter(contact => contact.id !== id)
+    );
+    toast.success(`Contact with name ${name} is deleted`);
   };
 
-  //Для отрисовки данных из локального хранилища нужно изменить значения в state данными из хранилища.Для этого парсим данные и делаем проверку 
-componentDidMount(){
- const contacts = localStorage.getItem('contacts')
- const parsedContacts = JSON.parse(contacts)
- if (parsedContacts !== null) {
-  this.setState({contacts: parsedContacts})
- }
-}
-
-
-//Добавление данных в LocalStorage. Для добавления данных берем предыдущее значение
-  componentDidUpdate(prevState){
-    if (this.state.contacts !== prevState.contacts) {
-      localStorage.setItem('contacts', JSON.stringify(this.state.contacts))
-    }
-  }
-
-  onDelete = id => {
-    this.setState(prevState => {
-      return {
-        contacts: prevState.contacts.filter(contact => contact.id !== id),
-      };
-    });
-  };
-
-  addContact = ({ name, number }) => {
-    const { contacts } = this.state;
+  const addContact = ({ name, number }) => {
     const newContact = { id: nanoid(), name, number };
 
     contacts.find(contact => contact.name === name)
-      ? alert(`${name} is already in the contact list`)
-      : this.setState(({ contacts }) => ({
-          contacts: [newContact, ...contacts],
-        }));
+      ? toast.error(`${name} is already in the contact list`)
+      : setContacts(prevContacts => [newContact, ...prevContacts]);
   };
 
-  getVisibleContacts = () => {
-    const { filter, contacts } = this.state;
+  const getVisibleContacts = () => {
     const normalizedFilter = filter.toLowerCase();
 
     return contacts.filter(({ name }) =>
@@ -57,25 +38,20 @@ componentDidMount(){
     );
   };
 
-  changeFilter = e => {
-    this.setState({ filter: e.target.value });
+  const changeFilter = e => {
+    setFilter(e.target.value);
   };
 
-  render() {
-    const { filter } = this.state;
+  return (
+    <div>
+      <Toaster position="top-right" reverseOrder={true} />
+      <h1>Phonebook</h1>
+      <ContactForm onSubmit={addContact} />
 
-    const visibleContacts = this.getVisibleContacts();
+      <h2>Contacts</h2>
+      <Filter value={filter} onChange={changeFilter} />
 
-    return (
-      <div>
-        <h1>Phonebook</h1>
-        <ContactForm onSubmit={this.addContact} />
-
-        <h2>Contacts</h2>
-        <Filter value={filter} onChange={this.changeFilter} />
-
-        <ContactList contacts={visibleContacts} onDelete={this.onDelete} />
-      </div>
-    );
-  }
-}
+      <ContactList contacts={getVisibleContacts()} onDelete={onDelete} />
+    </div>
+  );
+};
